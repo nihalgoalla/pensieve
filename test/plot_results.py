@@ -9,7 +9,8 @@ BITS_IN_BYTE = 8.0
 MILLISEC_IN_SEC = 1000.0
 M_IN_B = 1000000.0
 VIDEO_LEN = 48
-VIDEO_BIT_RATE = [300, 750, 1200, 1850, 2850, 4300]
+VIDEO_BIT_RATE_OLD = [300, 750, 1200, 1850, 2850, 4300]
+VIDEO_BIT_RATE = [1,2,3,4,5]
 K_IN_M = 1000.0
 REBUF_P = 4.3
 SMOOTH_P = 1
@@ -17,14 +18,26 @@ COLOR_MAP = plt.cm.jet #nipy_spectral, Set1,Paired
 SIM_DP = 'sim_dp'
 #SCHEMES = ['BB', 'RB', 'FIXED', 'FESTIVE', 'BOLA', 'RL',  'sim_rl', SIM_DP]
 # SCHEMES = ['sim_rl', SIM_DP]
-SCHEMES = ['sim_rl', 'sim_bb', 'sim_mpc']
+SCHEMES = ['sim_rl']
+# SCHEMES = ['sim_rl', 'sim_bb', 'sim_mpc']
 
 # bad_files = ["trace_5642_http---www.youtube.com",
 # "ferry.nesoddtangen-oslo-report.2011-02-01_1000CET.log",
 # "trace_32551_http---www.amazon.com",
 # "trace_942598_http---www.youtube.com",
 # "trace_5294_http---www.youtube.com"]
-bad_files = ["bus.ljansbakken-oslo-report.2010-09-29_1827CEST"]
+# bad_files = ["bus.ljansbakken-oslo-report.2010-09-29_1827CEST"]
+bad_files = ["beyond_117_jump", "beyond_172"]
+
+def calculate_smooth_penalty(array):
+	# sp += SMOOTH_P * np.abs(VIDEO_BIT_RATE[q] - VIDEO_BIT_RATE[last_q]) / K_IN_M
+	sp = 0
+	# import pdb; pdb.set_trace()
+	for index, q in enumerate(array):
+		if index!=0:
+			print(q, array[index-1])
+			sp += SMOOTH_P * np.abs(VIDEO_BIT_RATE[q-1] - VIDEO_BIT_RATE[array[index-1]-1]) / K_IN_M
+	return sp
 
 def main():
 	time_all = {}
@@ -47,6 +60,8 @@ def main():
 	# 	if SCHEMES[0] in log_file:
 	# 		log_files1 = log_files1 + [log_file]
 	# log_files = log_files1
+	arr_smooth_p = []
+	avg_bitrates = []
 	for log_file in log_files:
 
 		time_ms = []
@@ -54,7 +69,6 @@ def main():
 		buff = []
 		bw = []
 		reward = []
-
 		# print log_file
 
 		with open(RESULTS_FOLDER + log_file, 'rb') as f:
@@ -71,7 +85,7 @@ def main():
 						bit_rate.append(VIDEO_BIT_RATE[int(parse[6])])
 						buff.append(float(parse[4]))
 						bw.append(float(parse[5]))
-
+				sp = 0
 				for line in reversed(lines):
 					parse = line.split()
 					r = 0
@@ -86,6 +100,7 @@ def main():
 
 						r += VIDEO_BIT_RATE[q] / K_IN_M
 						r -= SMOOTH_P * np.abs(VIDEO_BIT_RATE[q] - VIDEO_BIT_RATE[last_q]) / K_IN_M
+						sp += SMOOTH_P * np.abs(VIDEO_BIT_RATE[q] - VIDEO_BIT_RATE[last_q]) / K_IN_M
 						# if r<-200:
 						# 	import pdb; pdb.set_trace()
 						reward.append(r)
@@ -93,7 +108,7 @@ def main():
 						last_t = t
 						last_b = b
 						last_q = q
-
+				arr_smooth_p += [sp]
 			else:
 				for line in f:
 					parse = line.split()
@@ -104,9 +119,11 @@ def main():
 					buff.append(float(parse[2]))
 					bw.append(float(parse[4]) / float(parse[5]) * BITS_IN_BYTE * MILLISEC_IN_SEC / M_IN_B)
 					reward.append(float(parse[6]))
-					if float(parse[6])<-200:
-						import pdb; pdb.set_trace()
-
+					# if float(parse[6])<-200:
+						# import pdb; pdb.set_trace()
+				if 'sim_rl' in log_file:
+					arr_smooth_p += [calculate_smooth_penalty(bit_rate)]
+					avg_bitrates += [float(sum(bit_rate))/len(bit_rate)]
 		if SIM_DP in log_file:
 			time_ms = time_ms[::-1]
 			bit_rate = bit_rate[::-1]
@@ -138,9 +155,12 @@ def main():
 
 	log_file_all = []
 	reward_all = {}
+	# import pdb; pdb.set_trace()
 	for scheme in SCHEMES:
 		reward_all[scheme] = []
-
+	trace_indices = []
+	trace_index = 0
+	reward_new_plot = []
 	for l in time_all[SCHEMES[0]]:
 		schemes_check = True
 		for scheme in SCHEMES:
@@ -153,7 +173,13 @@ def main():
 				reward_all[scheme].append(np.sum(raw_reward_all[scheme][l][1:VIDEO_LEN]))
 				if np.sum(raw_reward_all[scheme][l][1:VIDEO_LEN]) < -200:
 					print l
+				if np.sum(raw_reward_all[scheme][l][1:VIDEO_LEN]) > -20:
+					trace_indices = trace_indices + [trace_index]
+					trace_index += 1
+					reward_new_plot = reward_new_plot + [np.sum(raw_reward_all[scheme][l][1:VIDEO_LEN])]
 	# import pdb; pdb.set_trace()
+	plt.scatter(trace_indices, reward_new_plot)
+	plt.show()
 	mean_rewards = {}
 	for scheme in SCHEMES:
 		mean_rewards[scheme] = np.mean(reward_all[scheme])
@@ -185,23 +211,24 @@ def main():
 
 	fig = plt.figure()
 	ax = fig.add_subplot(111)
-
+	import pdb; pdb.set_trace()
 	for scheme in SCHEMES:
 		# values, base = np.histogram(reward_all[scheme], bins=NUM_BINS)
-		values, base = np.histogram([x for x in reward_all[scheme] if x>-100], bins=NUM_BINS)
+		values, base = np.histogram([x for x in reward_all[scheme] if x>-20], bins=NUM_BINS)
 		cumulative = np.cumsum(values)
 		# import pdb; pdb.set_trace()
 
 		# ax.plot(base[:-1], cumulative/40.0)
 		ax.plot(base[:-1], cumulative)
 		# ax.plot(reward_all[scheme])
-
+	# import pdb; pdb.set_trace()
+	# plt.plot()
 	colors = [COLOR_MAP(i) for i in np.linspace(0, 1, len(ax.lines))]
 	for i,j in enumerate(ax.lines):
 		j.set_color(colors[i])
 
 	ax.legend(SCHEMES_REW, loc=4)
-
+	import pdb;pdb.set_trace()
 	plt.ylabel('CDF')
 	plt.xlabel('total reward')
 	plt.show()
@@ -227,26 +254,32 @@ def main():
 			if schemes_check:
 				fig = plt.figure()
 
-				ax = fig.add_subplot(311)
+				# ax = fig.add_subplot(311)
+				ax = fig.add_subplot(211)
 				for scheme in SCHEMES:
-					ax.plot(time_all[scheme][l][:VIDEO_LEN], bit_rate_all[scheme][l][:VIDEO_LEN])
+					# ax.plot(time_all[scheme][l][:VIDEO_LEN], bit_rate_all[scheme][l][:VIDEO_LEN])
+					# ax.scatter(time_all[scheme][l][:VIDEO_LEN], bit_rate_all[scheme][l][:VIDEO_LEN])
+					ax.scatter(time_all[scheme][l][:], bit_rate_all[scheme][l][:])
 				colors = [COLOR_MAP(i) for i in np.linspace(0, 1, len(ax.lines))]
 				for i,j in enumerate(ax.lines):
 					j.set_color(colors[i])
 				plt.title(l)
 				plt.ylabel('bit rate selection (kbps)')
 
-				ax = fig.add_subplot(312)
-				for scheme in SCHEMES:
-					ax.plot(time_all[scheme][l][:VIDEO_LEN], buff_all[scheme][l][:VIDEO_LEN])
-				colors = [COLOR_MAP(i) for i in np.linspace(0, 1, len(ax.lines))]
-				for i,j in enumerate(ax.lines):
-					j.set_color(colors[i])
-				plt.ylabel('buffer size (sec)')
+				# ax = fig.add_subplot(312)
+				# for scheme in SCHEMES:
+				# 	# ax.plot(time_all[scheme][l][:VIDEO_LEN], buff_all[scheme][l][:VIDEO_LEN])
+				# 	ax.plot(time_all[scheme][l][:], buff_all[scheme][l][:])
+				# colors = [COLOR_MAP(i) for i in np.linspace(0, 1, len(ax.lines))]
+				# for i,j in enumerate(ax.lines):
+				# 	j.set_color(colors[i])
+				# plt.ylabel('buffer size (sec)')
 
-				ax = fig.add_subplot(313)
+				# ax = fig.add_subplot(313)
+				ax = fig.add_subplot(212)
 				for scheme in SCHEMES:
-					ax.plot(time_all[scheme][l][:VIDEO_LEN], bw_all[scheme][l][:VIDEO_LEN])
+					# ax.plot(time_all[scheme][l][:VIDEO_LEN], bw_all[scheme][l][:VIDEO_LEN])
+					ax.plot(time_all[scheme][l][:], bw_all[scheme][l][:])
 				colors = [COLOR_MAP(i) for i in np.linspace(0, 1, len(ax.lines))]
 				for i,j in enumerate(ax.lines):
 					j.set_color(colors[i])

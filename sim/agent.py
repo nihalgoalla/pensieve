@@ -13,12 +13,14 @@ import load_trace
 
 S_INFO = 6  # bit_rate, buffer_size, next_chunk_size, bandwidth_measurement(throughput and time), chunk_til_video_end
 S_LEN = 8  # take how many frames in the past
-A_DIM = 6
+# A_DIM = 6
+A_DIM = 5
 ACTOR_LR_RATE = 0.0001
 CRITIC_LR_RATE = 0.001
 TRAIN_SEQ_LEN = 100  # take as a train batch
 MODEL_SAVE_INTERVAL = 100
-VIDEO_BIT_RATE = [300,750,1200,1850,2850,4300]  # Kbps
+# VIDEO_BIT_RATE = [300,750,1200,1850,2850,4300]  # Kbps
+VIDEO_BIT_RATE = [1,2,3,4,5]  # Kbps
 BUFFER_NORM_FACTOR = 10.0
 CHUNK_TIL_VIDEO_END_CAP = 48.0
 M_IN_K = 1000.0
@@ -120,7 +122,7 @@ def main():
             state[0, -1] = VIDEO_BIT_RATE[bit_rate] / float(np.max(VIDEO_BIT_RATE))  # last quality
             state[1, -1] = buffer_size / BUFFER_NORM_FACTOR  # 10 sec
             state[2, -1] = float(video_chunk_size) / float(delay) / M_IN_K  # kilo byte / ms
-            state[3, -1] = float(delay) / M_IN_K / BUFFER_NORM_FACTOR  # 10 sec 
+            state[3, -1] = float(delay) / M_IN_K / BUFFER_NORM_FACTOR  # 10 sec
             state[4, :A_DIM] = np.array(next_video_chunk_sizes) / M_IN_K / M_IN_K  # mega byte
             state[5, -1] = np.minimum(video_chunk_remain, CHUNK_TIL_VIDEO_END_CAP) / float(CHUNK_TIL_VIDEO_END_CAP)
 

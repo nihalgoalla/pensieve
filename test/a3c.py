@@ -4,8 +4,10 @@ import tflearn
 import tensorflow.compat.v1 as tf
 tf.disable_v2_behavior()
 
+
 GAMMA = 0.99
-A_DIM = 6
+# A_DIM = 6
+A_DIM = 5
 ENTROPY_WEIGHT = 0.5
 ENTROPY_EPS = 1e-6
 S_INFO = 4
@@ -61,6 +63,7 @@ class ActorNetwork(object):
 
     def create_actor_network(self):
         with tf.variable_scope('actor'):
+        # with tf.compat.v1.variable_scope('actor'):
             inputs = tflearn.input_data(shape=[None, self.s_dim[0], self.s_dim[1]])
 
             split_0 = tflearn.fully_connected(inputs[:, 0:1, -1], 128, activation='relu')
@@ -159,6 +162,7 @@ class CriticNetwork(object):
 
     def create_critic_network(self):
         with tf.variable_scope('critic'):
+        # with tf.compat.v1.variable_scope('critic'):
             inputs = tflearn.input_data(shape=[None, self.s_dim[0], self.s_dim[1]])
 
             split_0 = tflearn.fully_connected(inputs[:, 0:1, -1], 128, activation='relu')

@@ -12,10 +12,12 @@ import matplotlib.pyplot as plt
 
 S_INFO = 6  # bit_rate, buffer_size, next_chunk_size, bandwidth_measurement(throughput and time), chunk_til_video_end
 S_LEN = 8  # take how many frames in the past
-A_DIM = 6
+A_DIM = 5
+A_DIM_OLD = 6
 ACTOR_LR_RATE = 0.0001
 CRITIC_LR_RATE = 0.001
-VIDEO_BIT_RATE = [300,750,1200,1850,2850,4300]  # Kbps
+# VIDEO_BIT_RATE = [300,750,1200,1850,2850,4300]  # Kbps
+VIDEO_BIT_RATE = [1, 2, 3, 4,5]
 BUFFER_NORM_FACTOR = 10.0
 CHUNK_TIL_VIDEO_END_CAP = 48.0
 M_IN_K = 1000.0
@@ -27,8 +29,8 @@ RAND_RANGE = 1000
 SUMMARY_DIR = './results'
 LOG_FILE = './results/log_sim_rl'
 # log in format of time_stamp bit_rate buffer_size rebuffer_time chunk_size download_time reward
-# NN_MODEL = './models/nn_model_ep_2400.ckpt'
-NN_MODEL = './models/pretrain_linear_reward.ckpt'
+NN_MODEL = './models/nn_model_ep_115000.ckpt'
+# NN_MODEL = './models/pretrain_linear_reward.ckpt'
 
 
 def main():
@@ -94,11 +96,18 @@ def main():
             time_stamp += sleep_time  # in ms
 
             # reward is video quality - rebuffer penalty - smoothness
-            reward = VIDEO_BIT_RATE[bit_rate] / M_IN_K \
-                     - REBUF_PENALTY * rebuf \
-                     - SMOOTH_PENALTY * np.abs(VIDEO_BIT_RATE[bit_rate] -
-                                               VIDEO_BIT_RATE[last_bit_rate]) / M_IN_K
+            # reward = VIDEO_BIT_RATE[bit_rate] / M_IN_K \
+            #          - REBUF_PENALTY * rebuf \
+            #          - SMOOTH_PENALTY * np.abs(VIDEO_BIT_RATE[bit_rate] -
+            #                                    VIDEO_BIT_RATE[last_bit_rate]) / M_IN_K
+            # reward = VIDEO_BIT_RATE[bit_rate] \
+            #          - REBUF_PENALTY * rebuf \
+            #          - SMOOTH_PENALTY * np.abs(VIDEO_BIT_RATE[bit_rate] -
+            #                                    VIDEO_BIT_RATE[last_bit_rate])
 
+            reward = VIDEO_BIT_RATE[bit_rate] \
+                     - SMOOTH_PENALTY * np.abs(VIDEO_BIT_RATE[bit_rate] -
+                                               VIDEO_BIT_RATE[last_bit_rate])
             r_batch.append(reward)
             # if reward<-200:
             #     import pdb; pdb.set_trace()

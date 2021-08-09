@@ -5,7 +5,8 @@ B_IN_MB = 1000000.0
 BITS_IN_BYTE = 8.0
 RANDOM_SEED = 42
 VIDEO_CHUNCK_LEN = 4000.0  # millisec, every time add this amount to buffer
-BITRATE_LEVELS = 6
+# BITRATE_LEVELS = 6
+BITRATE_LEVELS = 5
 TOTAL_VIDEO_CHUNCK = 48
 BUFFER_THRESH = 60.0 * MILLISECONDS_IN_SECOND  # millisec, max buffer limit
 DRAIN_BUFFER_SLEEP_TIME = 500.0  # millisec
@@ -136,10 +137,10 @@ class Environment:
             end_of_video = True
             self.buffer_size = 0
             self.video_chunk_counter = 0
-            
+
             self.trace_idx += 1
             if self.trace_idx >= len(self.all_cooked_time):
-                self.trace_idx = 0            
+                self.trace_idx = 0
 
             self.cooked_time = self.all_cooked_time[self.trace_idx]
             self.cooked_bw = self.all_cooked_bw[self.trace_idx]
